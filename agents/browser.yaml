@@ -2,7 +2,7 @@
 global:
   device_id: gitops-browser-fixture
   work_dir: /tmp/microcd-gitops-fixture
-  timezone: UTC
+  timezone: Europe/Vienna
   logging:
     level: info
   config_sync:
