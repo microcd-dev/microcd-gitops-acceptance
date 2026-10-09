@@ -163,6 +163,3 @@ sbom_generation:
   enabled: true
   per_image_timeout_secs: 180
   continue_on_error: false
-
-# Deliberate invalid GitOps acceptance candidate; restore follows rejection.
-global: {}
