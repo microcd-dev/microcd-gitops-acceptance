@@ -1,0 +1,15 @@
+# Synthetic GitOps browser fixture: no production identity or secrets.
+global:
+  device_id: gitops-browser-fixture
+  work_dir: /tmp/microcd-gitops-fixture
+  timezone: UTC
+  logging:
+    level: info
+  config_sync:
+    enabled: true
+    git_source:
+      repository_url: https://github.com/microcd-dev/microcd-gitops-acceptance.git
+      branch: main
+      path: agents/browser.yaml
+      poll_interval_seconds: 30
+repositories: []
