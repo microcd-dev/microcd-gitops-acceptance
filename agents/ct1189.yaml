@@ -1,0 +1,165 @@
+schema_version: 1
+global:
+  hub_config_management:
+    enabled: true
+    allow_workload_changes: true
+  hub_credential_management:
+    enabled: true
+    provisioning_registries:
+    - registry: "${MICROCD_CANARY_NETWORK_01}"
+      credential_ref: acceptance-first-create
+  credential_store:
+    directory: /var/lib/microcd/credential-store
+    owner:
+      user: microcd
+      group: microcd
+    key_provider:
+      source: file
+      path: /var/lib/microcd/keys/credential-store.key
+      parent_owner:
+        user: microcd
+        group: microcd
+      file_owner:
+        user: microcd
+        group: microcd
+      key_id: canary-rc1-20260922
+  device_id: 2fd83166-7ec6-43a2-a3bb-515eebd51cdb
+  timezone: UTC
+  work_dir: /var/lib/microcd
+  git_transport:
+    connect_timeout_seconds: 30
+    server_io_timeout_seconds: 60
+  logging:
+    level: info
+    stdout: true
+  release:
+    enabled: true
+    registry_url: https://github.com/microcd-dev/microCD
+    auto_check: true
+    auto_install: false
+    verification:
+      require: false
+    check_interval: 3600
+    install_path: /var/lib/microcd/bin/microcd
+    channel: stable
+    public_keys:
+    - key: f02590e6ae3b54ef38ce09c1660594d28e915c80b3c8e7258ea28d41e1900c0b
+      fingerprint: SHA256:bb6e385b64ce676e
+    oci_registry: ghcr.io/microcd-dev/microcd-releases
+    auto_restart: true
+    service_name: microcd
+  update_policy:
+    channel: stable
+    auto_check: true
+    auto_install: false
+    check_schedule: null
+    report_to_hub: true
+    rollback_timeout: 90
+    min_disk_space_mb: 100
+  docker:
+    socket_path: /var/run/docker.sock
+    timeout_seconds: 30
+    tls_verify: true
+  runtime:
+    engine: docker
+    compose_provider: auto
+    rootless: false
+  hub:
+    enabled: true
+    url: "${MICROCD_CANARY_NETWORK_02}"
+    token: "${MICROCD_CANARY_HUB_TOKEN}"
+    organization: aa2bc810-8d79-426e-b1a0-fffaf5bd3553
+    device_id: 2fd83166-7ec6-43a2-a3bb-515eebd51cdb
+    command_poll_interval_seconds: null
+    command_fast_poll_interval_seconds: null
+    certificates:
+      cert_file: /var/lib/microcd/hub-identities/identity-3d114052-32c1-4cb8-8ad3-e425c294c39b/current/device.crt
+      key_file: /var/lib/microcd/hub-identities/identity-3d114052-32c1-4cb8-8ad3-e425c294c39b/current/device.key
+      ca_file: /var/lib/microcd/hub-identities/identity-3d114052-32c1-4cb8-8ad3-e425c294c39b/current/ca.crt
+      renewal_window_days: 14
+  deployment:
+    cutover_strategy: pull-first
+  web:
+    enabled: true
+    bind: "${MICROCD_CANARY_NETWORK_03}"
+    port: 8080
+  config_sync:
+    git_source:
+      repository_url: https://github.com/microcd-dev/microcd-gitops-acceptance.git
+      branch: main
+      path: agents/ct1189.yaml
+      poll_interval_seconds: 60
+repositories:
+- name: fleet-example
+  url: /srv/microcd-example
+  branch: main
+  target_environment: acceptance
+  compose_path: compose.yaml
+  schedule: 0 0 * * * *
+  run_on_start: true
+  security_policy:
+    scan_on_deploy: true
+    block_on_vulnerabilities: false
+    allow_warnings: true
+- name: hub-managed-whoami
+  enabled: true
+  auto_deploy: false
+  schedule: '@daily'
+  url: https://github.com/microcd-dev/microCD.git
+  branch: main
+  compose_path: tests/e2e-real/fixtures/repos/hello-compose/docker-compose.yml
+  target_environment: hub-acceptance
+- name: hub-hotadd-smoke
+  enabled: true
+  auto_deploy: true
+  schedule: 0 * * * * *
+  url: https://github.com/docker/compose.git
+  branch: main
+  compose_path: pkg/e2e/fixtures/start-stop/compose.yaml
+  target_environment: hub-hotadd
+environments:
+  acceptance:
+    compose_project_name: microcd-acceptance
+    compose_build: never
+    registries:
+    - registry: "${MICROCD_CANARY_NETWORK_04}"
+      credential_ref: acceptance-first-create
+      insecure: false
+    rollback:
+      health_check:
+        url: "${MICROCD_CANARY_NETWORK_05}"
+        timeout_seconds: 5
+        retries: 3
+        retry_delay_seconds: 1
+        mode: http
+  hub-acceptance: {}
+  hub-hotadd: {}
+reporting:
+  endpoint: "${MICROCD_CANARY_NETWORK_06}"
+  interval_seconds: 30
+  auth:
+    token: "${MICROCD_CANARY_LEGACY_REPORTING_TOKEN}"
+security:
+  cve_scanner:
+    enabled: true
+    scanner_tool: trivy
+    block_threshold: CRITICAL
+    fail_on_error: true
+    cache_dir: /var/lib/microcd/cve-cache
+    tool_config:
+      timeout_seconds: 600
+      extra_args: []
+    hub_reporting:
+      enabled: true
+      hub_url: "${MICROCD_CANARY_NETWORK_07}"
+      api_key: "${MICROCD_CANARY_LEGACY_CVE_API_KEY}"
+      report_violations_only: false
+  default_policy:
+    scan_on_deploy: true
+    block_on_vulnerabilities: false
+    allow_warnings: true
+sbom_generation:
+  report_to_hub: true
+  enabled: true
+  per_image_timeout_secs: 180
+  continue_on_error: false
