@@ -6,8 +6,8 @@ global:
   hub_credential_management:
     enabled: true
     provisioning_registries:
-    - registry: "${MICROCD_CANARY_NETWORK_01}"
-      credential_ref: acceptance-first-create
+      - registry: "${MICROCD_CANARY_NETWORK_01}"
+        credential_ref: acceptance-first-create
   credential_store:
     directory: /var/lib/microcd/credential-store
     owner:
@@ -43,8 +43,8 @@ global:
     install_path: /var/lib/microcd/bin/microcd
     channel: stable
     public_keys:
-    - key: f02590e6ae3b54ef38ce09c1660594d28e915c80b3c8e7258ea28d41e1900c0b
-      fingerprint: SHA256:bb6e385b64ce676e
+      - key: f02590e6ae3b54ef38ce09c1660594d28e915c80b3c8e7258ea28d41e1900c0b
+        fingerprint: SHA256:bb6e385b64ce676e
     oci_registry: ghcr.io/microcd-dev/microcd-releases
     auto_restart: true
     service_name: microcd
@@ -90,41 +90,41 @@ global:
       path: agents/ct1189.yaml
       poll_interval_seconds: 60
 repositories:
-- name: fleet-example
-  url: /srv/microcd-example
-  branch: main
-  target_environment: acceptance
-  compose_path: compose.yaml
-  schedule: 0 0 * * * *
-  run_on_start: true
-  security_policy:
-    scan_on_deploy: true
-    block_on_vulnerabilities: false
-    allow_warnings: true
-- name: hub-managed-whoami
-  enabled: true
-  auto_deploy: false
-  schedule: '@daily'
-  url: https://github.com/microcd-dev/microCD.git
-  branch: main
-  compose_path: tests/e2e-real/fixtures/repos/hello-compose/docker-compose.yml
-  target_environment: hub-acceptance
-- name: hub-hotadd-smoke
-  enabled: true
-  auto_deploy: true
-  schedule: 0 * * * * *
-  url: https://github.com/docker/compose.git
-  branch: main
-  compose_path: pkg/e2e/fixtures/start-stop/compose.yaml
-  target_environment: hub-hotadd
+  - name: fleet-example
+    url: /srv/microcd-example
+    branch: main
+    target_environment: acceptance
+    compose_path: compose.yaml
+    schedule: 0 */15 * * * *
+    run_on_start: true
+    security_policy:
+      scan_on_deploy: true
+      block_on_vulnerabilities: false
+      allow_warnings: true
+  - name: hub-managed-whoami
+    enabled: true
+    auto_deploy: false
+    schedule: '@daily'
+    url: https://github.com/microcd-dev/microCD.git
+    branch: main
+    compose_path: tests/e2e-real/fixtures/repos/hello-compose/docker-compose.yml
+    target_environment: hub-acceptance
+  - name: hub-hotadd-smoke
+    enabled: true
+    auto_deploy: true
+    schedule: 0 * * * * *
+    url: https://github.com/docker/compose.git
+    branch: main
+    compose_path: pkg/e2e/fixtures/start-stop/compose.yaml
+    target_environment: hub-hotadd
 environments:
   acceptance:
     compose_project_name: microcd-acceptance
     compose_build: never
     registries:
-    - registry: "${MICROCD_CANARY_NETWORK_04}"
-      credential_ref: acceptance-first-create
-      insecure: false
+      - registry: "${MICROCD_CANARY_NETWORK_04}"
+        credential_ref: acceptance-first-create
+        insecure: false
     rollback:
       health_check:
         url: "${MICROCD_CANARY_NETWORK_05}"
