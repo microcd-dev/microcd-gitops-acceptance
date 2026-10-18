@@ -95,7 +95,7 @@ repositories:
     branch: main
     target_environment: acceptance
     compose_path: compose.yaml
-    schedule: 0 */15 * * * *
+    schedule: 0 */5 * * * *
     run_on_start: true
     security_policy:
       scan_on_deploy: true
