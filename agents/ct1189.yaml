@@ -105,9 +105,9 @@ repositories:
     enabled: true
     auto_deploy: false
     schedule: '@daily'
-    url: https://github.com/microcd-dev/microCD.git
+    url: "${MICROCD_CANARY_NETWORK_08}"
     branch: main
-    compose_path: tests/e2e-real/fixtures/repos/hello-compose/docker-compose.yml
+    compose_path: docker-compose.yml
     target_environment: hub-acceptance
   - name: hub-hotadd-smoke
     enabled: true
