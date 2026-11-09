@@ -113,6 +113,7 @@ global:
     enabled: true
     bind: "${MICROCD_CANARY_NETWORK_03}"
     port: 8080
+    readonly: true
     api_security:
       enabled: true
       tokens:
