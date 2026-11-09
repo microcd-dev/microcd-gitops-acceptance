@@ -2,7 +2,6 @@ schema_version: 1
 global:
   hub_config_management:
     enabled: true
-    allow_workload_changes: true
   hub_credential_management:
     enabled: true
     provisioning_registries:
@@ -36,9 +35,10 @@ global:
     enabled: true
     registry_url: https://github.com/microcd-dev/microCD
     auto_check: true
-    auto_install: false
+    auto_install: true
+    allow_hub_updates: true
     verification:
-      require: false
+      require: true
     check_interval: 3600
     install_path: /var/lib/microcd/bin/microcd
     channel: stable
@@ -48,14 +48,6 @@ global:
     oci_registry: ghcr.io/microcd-dev/microcd-releases
     auto_restart: true
     service_name: microcd
-  update_policy:
-    channel: stable
-    auto_check: true
-    auto_install: false
-    check_schedule: null
-    report_to_hub: true
-    rollback_timeout: 90
-    min_disk_space_mb: 100
   docker:
     socket_path: /var/run/docker.sock
     timeout_seconds: 30
@@ -70,8 +62,6 @@ global:
     token: "${MICROCD_CANARY_HUB_TOKEN}"
     organization: aa2bc810-8d79-426e-b1a0-fffaf5bd3553
     device_id: 2fd83166-7ec6-43a2-a3bb-515eebd51cdb
-    command_poll_interval_seconds: null
-    command_fast_poll_interval_seconds: null
     certificates:
       cert_file: /var/lib/microcd/hub-identities/identity-3d114052-32c1-4cb8-8ad3-e425c294c39b/current/device.crt
       key_file: /var/lib/microcd/hub-identities/identity-3d114052-32c1-4cb8-8ad3-e425c294c39b/current/device.key
@@ -79,10 +69,55 @@ global:
       renewal_window_days: 14
   deployment:
     cutover_strategy: pull-first
+  traffic:
+    network: microcd-traefik
+    managed:
+      enabled: true
+      image: "traefik:v3.1"
+      http_port: 18080
+      https_port: 18443
+      entrypoint: web
+  pre_download:
+    enabled: true
+    max_concurrent_downloads: 2
+    schedule:
+      cron: "0 2 * * *"
+      enabled: true
+    discovery:
+      scan_all_repositories: true
+      target_environments: ["acceptance", "hub-acceptance", "webhook-smoke", "canary-smoke"]
+  cache_management:
+    enabled: true
+    schedule:
+      cron: "0 3 * * *"
+    retention:
+      max_unused_age_hours: 168
+      grace_period_hours: 24
+  bandwidth:
+    max_bandwidth_bytes_per_second: 5242880
+  edge:
+    enabled: true
+    offline:
+      connectivity_check_url: "${MICROCD_CANARY_NETWORK_09}"
+      max_queue_size: 100
+  maintenance_windows:
+    - name: canary-slot
+      start_schedule: "0 0 * * * *"
+      duration_minutes: 50
+      allow_deployments: true
+    - name: canary-freeze
+      start_schedule: "0 50 * * * *"
+      duration_minutes: 10
+      allow_deployments: false
   web:
     enabled: true
     bind: "${MICROCD_CANARY_NETWORK_03}"
     port: 8080
+    api_security:
+      enabled: true
+      tokens:
+        - name: canary-admin
+          token: "${MICROCD_CANARY_API_TOKEN_ADMIN}"
   config_sync:
     git_source:
       repository_url: https://github.com/microcd-dev/microcd-gitops-acceptance.git
@@ -99,7 +134,8 @@ repositories:
     run_on_start: true
     security_policy:
       scan_on_deploy: true
-      block_on_vulnerabilities: false
+      block_on_vulnerabilities: true
+      allowed_severities: [UNKNOWN, NEGLIGIBLE, LOW, MEDIUM, HIGH]
       allow_warnings: true
   - name: hub-managed-whoami
     enabled: true
@@ -117,7 +153,50 @@ repositories:
     branch: main
     compose_path: pkg/e2e/fixtures/start-stop/compose.yaml
     target_environment: hub-hotadd
+  - name: webhook-smoke
+    enabled: true
+    auto_deploy: true
+    schedule: '@daily'
+    url: "${MICROCD_CANARY_NETWORK_10}"
+    branch: main
+    compose_path: compose.yaml
+    target_environment: webhook-smoke
+    webhook:
+      enabled: true
+      credential_ref: webhook-smoke-webhook-secret
+      branch_filter: ["main"]
+  - name: canary-smoke
+    enabled: true
+    auto_deploy: true
+    schedule: '0 */5 * * * *'
+    url: "${MICROCD_CANARY_NETWORK_10}"
+    branch: main
+    compose_path: canary.compose.yaml
+    target_environment: canary-smoke
+    deployment_strategy:
+      type: canary
+      initial_percentage: 10
+      step_percentage: 30
+      options:
+        canary_step_duration_seconds: 60
+      traffic:
+        service: web
+        port: 80
+        path_prefix: /
+        entrypoint: web
 environments:
+  canary-smoke:
+    compose_project_name: canary-smoke
+  webhook-smoke:
+    compose_project_name: webhook-smoke
+    secrets:
+      provider: sops
+      deliver_as: compose_secrets
+      files: [secrets/webhook-smoke.enc.yaml]
+      key:
+        source: file
+        path: /var/lib/microcd/keys/webhook-smoke.age
+        owner: { user: microcd, group: microcd }
   acceptance:
     compose_project_name: microcd-acceptance
     compose_build: never
@@ -134,11 +213,6 @@ environments:
         mode: http
   hub-acceptance: {}
   hub-hotadd: {}
-reporting:
-  endpoint: "${MICROCD_CANARY_NETWORK_06}"
-  interval_seconds: 30
-  auth:
-    token: "${MICROCD_CANARY_LEGACY_REPORTING_TOKEN}"
 security:
   cve_scanner:
     enabled: true
@@ -149,17 +223,28 @@ security:
     tool_config:
       timeout_seconds: 600
       extra_args: []
-    hub_reporting:
-      enabled: true
-      hub_url: "${MICROCD_CANARY_NETWORK_07}"
-      api_key: "${MICROCD_CANARY_LEGACY_CVE_API_KEY}"
-      report_violations_only: false
   default_policy:
     scan_on_deploy: true
-    block_on_vulnerabilities: false
+    block_on_vulnerabilities: true
     allow_warnings: true
+  rescan_deployed:
+    enabled: true
+    schedule: "0 3 * * *"
+  scheduled_scans:
+    - name: whoami-nightly
+      image: "traefik/whoami:latest"
+      schedule: "0 4 * * *"
+      scanner: grype
 sbom_generation:
   report_to_hub: true
   enabled: true
   per_image_timeout_secs: 180
   continue_on_error: false
+alerts:
+  webhook:
+    url: "http://127.0.0.1:18899/alerts"
+    secret: "${MICROCD_CANARY_ALERT_WEBHOOK_SECRET}"
+    timeout_seconds: 10
+  heartbeat:
+    credential_ref: alert-sink-heartbeat
+    interval_seconds: 300
