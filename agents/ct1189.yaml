@@ -146,14 +146,6 @@ repositories:
     branch: main
     compose_path: docker-compose.yml
     target_environment: hub-acceptance
-  - name: hub-hotadd-smoke
-    enabled: true
-    auto_deploy: true
-    schedule: 0 * * * * *
-    url: https://github.com/docker/compose.git
-    branch: main
-    compose_path: pkg/e2e/fixtures/start-stop/compose.yaml
-    target_environment: hub-hotadd
   - name: webhook-smoke
     enabled: true
     auto_deploy: true
@@ -213,7 +205,6 @@ environments:
         retry_delay_seconds: 1
         mode: http
   hub-acceptance: {}
-  hub-hotadd: {}
 security:
   cve_scanner:
     enabled: true
